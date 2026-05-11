@@ -338,16 +338,13 @@ export default function App() {
             }}>
               <span style={{ fontSize: 20 }}>💡</span>
               <p style={{ color: "#555", fontSize: 12, lineHeight: 1.6, margin: 0 }}>
-                ¿Te sirvió? Seguí{" "}
-                <a
-                  href="https://www.instagram.com/chichalabs"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "#00e5a0", textDecoration: "none" }}
-                >
-                  @chichalabs
-                </a>{" "}
-                en Instagram para conseguir el generador de prompts de tu rubro cada semana.
+                ¿Te sirvió? Seguinos en{" "}
+                <a href="https://www.instagram.com/chichalabs" target="_blank" rel="noopener noreferrer" style={{ color: "#00e5a0", textDecoration: "none" }}>Instagram</a>
+                ,{" "}
+                <a href="https://www.tiktok.com/@chichalabs" target="_blank" rel="noopener noreferrer" style={{ color: "#00e5a0", textDecoration: "none" }}>TikTok</a>
+                {" "}y{" "}
+                <a href="https://www.youtube.com/@chichalabs" target="_blank" rel="noopener noreferrer" style={{ color: "#00e5a0", textDecoration: "none" }}>YouTube</a>
+                {" "}— <span style={{ color: "#444" }}>@chichalabs</span> — para conseguir el generador de prompts de tu rubro cada semana.
               </p>
             </div>
           </div>
