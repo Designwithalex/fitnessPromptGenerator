@@ -12,6 +12,77 @@ const niveles = ["Principiante", "Intermedio", "Avanzado"];
 const objetivos = ["Bajar de peso", "Ganar músculo", "Mejorar resistencia", "Tonificar", "Rehabilitación"];
 const edades = ["18-25", "26-35", "36-45", "46+"];
 
+const generarPromptLocal = ({ situacion, nivel, objetivo, edad, extra }) => {
+  const ctx = [];
+  if (nivel) ctx.push(`Nivel de condición física: ${nivel}`);
+  if (objetivo) ctx.push(`Objetivo principal: ${objetivo}`);
+  if (edad) ctx.push(`Rango de edad: ${edad} años`);
+  if (extra) ctx.push(`Contexto adicional: ${extra}`);
+
+  const contextoStr = ctx.length > 0
+    ? `\n\nDatos del cliente:\n${ctx.map(c => `- ${c}`).join("\n")}`
+    : "";
+
+  const templates = {
+    consulta: `Actuá como un preparador físico profesional con experiencia en entrenamiento personalizado. Un cliente te hace una consulta y necesitás responderle de forma clara, empática y con fundamento técnico.${contextoStr}
+
+Respondé la siguiente consulta del cliente: [PEGÁ ACÁ LA CONSULTA DEL CLIENTE]
+
+Tu respuesta debe:
+- Ser clara y fácil de entender, sin jerga técnica innecesaria
+- Dar una recomendación concreta y accionable
+- Mencionar si hay algo a ajustar según el nivel o condición del cliente
+- Tener un tono profesional pero cercano
+- Tener máximo 150 palabras`,
+
+    rutina: `Actuá como un preparador físico profesional especializado en diseño de programas de entrenamiento. Creá una rutina semanal personalizada para el siguiente cliente.${contextoStr}
+
+La rutina debe incluir:
+- Nombre del plan y objetivo central
+- Días de entrenamiento (especificá días de descanso)
+- Para cada día: ejercicios con series, repeticiones y tiempo de descanso entre series
+- Progresión sugerida para las primeras 4 semanas
+- Indicaciones de calentamiento y vuelta a la calma
+- Un consejo nutricional básico alineado al objetivo
+
+Usá tablas o listas ordenadas para que sea fácil de leer en pantalla.`,
+
+    contenido: `Actuá como un experto en marketing digital para profesionales del fitness. Creá contenido para redes sociales (Instagram y TikTok) para un preparador físico.${contextoStr}
+
+Generá este pack de contenido:
+
+1. Post educativo (carrusel de 5 slides): elegí un tema relevante al objetivo del cliente. Incluí título de cada slide, texto principal y caption con hashtags.
+2. Reel / TikTok: guión de 30-45 segundos con hook inicial, desarrollo y llamado a la acción al final.
+3. Stories interactivas: 3 ideas de stories con preguntas o encuestas para generar engagement.
+
+Tono: cercano, motivador, con autoridad. Sin clichés del fitness.`,
+
+    presupuesto: `Actuá como un preparador físico profesional que redacta una propuesta de servicios para un cliente potencial.${contextoStr}
+
+Redactá un presupuesto/propuesta que incluya:
+- Presentación breve (2-3 líneas de propuesta de valor)
+- Descripción del plan recomendado para este cliente
+- Detalle de lo que incluye el servicio (sesiones, seguimiento, comunicación, etc.)
+- Cuadro de precios con 3 opciones (básico, completo, premium) — usá [PRECIO] como placeholder
+- Condiciones básicas: forma de pago, política de cancelaciones y duración mínima del plan
+- Cierre con llamado a la acción
+
+Tono: profesional, confiable, orientado a resultados. Máximo una página.`,
+
+    motivacion: `Actuá como un preparador físico que conoce bien a su cliente y quiere enviarle un mensaje motivacional personalizado.${contextoStr}
+
+Escribí un mensaje motivacional que:
+- Reconozca el punto de partida y los desafíos específicos de este cliente
+- Conecte con el "por qué" real detrás de su objetivo físico
+- Incluya 1 acción concreta para hoy o esta semana
+- Sea auténtico, sin frases trilladas tipo "¡tú puedes!"
+- Tenga entre 80 y 120 palabras
+- Se pueda enviar por WhatsApp o Instagram DM`,
+  };
+
+  return templates[situacion] || "";
+};
+
 export default function App() {
   const [situacion, setSituacion] = useState(null);
   const [nivel, setNivel] = useState("");
@@ -19,64 +90,14 @@ export default function App() {
   const [edad, setEdad] = useState("");
   const [extra, setExtra] = useState("");
   const [resultado, setResultado] = useState("");
-  const [loading, setLoading] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [step, setStep] = useState(1);
 
-  const buildSystemPrompt = () => {
-    return `Sos un experto en crear prompts para preparadores físicos que quieren usar IA en su trabajo diario.
-Generás prompts claros, específicos y listos para usar en Claude o ChatGPT.
-El prompt que generás debe estar en español rioplatense, ser directo, y producir resultados profesionales cuando se lo pegue a la IA.
-Respondé SOLO con el prompt generado, sin explicaciones, sin comillas al inicio o final, sin preamble.`;
-  };
-
-  const buildUserPrompt = () => {
-    const sit = situaciones.find(s => s.id === situacion);
-    return `Generá un prompt listo para usar en Claude o ChatGPT para un preparador físico que necesita: ${sit?.label}.
-
-Datos del cliente/contexto:
-- Nivel: ${nivel || "no especificado"}
-- Objetivo: ${objetivo || "no especificado"}
-- Rango de edad: ${edad || "no especificado"}
-- Detalle adicional: ${extra || "ninguno"}
-
-El prompt debe:
-1. Pedirle a la IA que actúe como preparador físico profesional
-2. Incluir todos los datos del cliente como contexto
-3. Especificar el formato de respuesta esperado
-4. Ser directo y producir resultado usable de inmediato
-
-Devolvé SOLO el prompt, listo para copiar y pegar.`;
-  };
-
-  const generar = async () => {
+  const generar = () => {
     if (!situacion) return;
-    setLoading(true);
-    setResultado("");
-    try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: buildSystemPrompt(),
-          messages: [{ role: "user", content: buildUserPrompt() }],
-        }),
-      });
-      const data = await response.json();
-      const text = data.content?.find(b => b.type === "text")?.text || "";
-      setResultado(text);
-      setStep(3);
-    } catch (e) {
-      setResultado("Hubo un error generando el prompt. Intentá de nuevo.");
-    }
-    setLoading(false);
+    const prompt = generarPromptLocal({ situacion, nivel, objetivo, edad, extra });
+    setResultado(prompt);
+    setStep(3);
   };
 
   const copiar = () => {
@@ -124,7 +145,7 @@ Devolvé SOLO el prompt, listo para copiar y pegar.`;
           fontSize: 16,
         }}>⚡</div>
         <div>
-          <p style={{ color: "#fff", fontSize: 14, fontWeight: 600, margin: 0 }}>IA para Todos</p>
+          <p style={{ color: "#fff", fontSize: 14, fontWeight: 600, margin: 0 }}>Chicha Labs</p>
           <p style={{ color: "#555", fontSize: 11, margin: 0 }}>Generador de prompts para preparadores físicos</p>
         </div>
       </div>
@@ -251,19 +272,19 @@ Devolvé SOLO el prompt, listo para copiar y pegar.`;
                   width: "100%", background: "#111", border: "1px solid #1e1e1e",
                   borderRadius: 10, padding: "12px 14px", color: "#ddd", fontSize: 13,
                   resize: "none", outline: "none", fontFamily: "inherit",
-                  lineHeight: 1.6,
+                  lineHeight: 1.6, boxSizing: "border-box",
                 }}
               />
             </div>
 
-            <button onClick={generar} disabled={loading} style={{
+            <button onClick={generar} style={{
               width: "100%", padding: "16px",
-              background: loading ? "#111" : "linear-gradient(135deg, #00e5a0, #00b8d4)",
-              border: "none", borderRadius: 10, cursor: loading ? "not-allowed" : "pointer",
-              color: loading ? "#555" : "#000", fontSize: 15, fontWeight: 600,
+              background: "linear-gradient(135deg, #00e5a0, #00b8d4)",
+              border: "none", borderRadius: 10, cursor: "pointer",
+              color: "#000", fontSize: 15, fontWeight: 600,
               fontFamily: "inherit", transition: "all 0.2s",
             }}>
-              {loading ? "Generando prompt..." : "⚡ Generar prompt"}
+              ⚡ Generar prompt
             </button>
           </div>
         )}
@@ -317,7 +338,16 @@ Devolvé SOLO el prompt, listo para copiar y pegar.`;
             }}>
               <span style={{ fontSize: 20 }}>💡</span>
               <p style={{ color: "#555", fontSize: 12, lineHeight: 1.6, margin: 0 }}>
-                ¿Te sirvió? Seguí <span style={{ color: "#00e5a0" }}>@iáparatodos</span> para conseguir el generador de prompts de tu rubro cada semana.
+                ¿Te sirvió? Seguí{" "}
+                <a
+                  href="https://www.instagram.com/chichalabs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#00e5a0", textDecoration: "none" }}
+                >
+                  @chichalabs
+                </a>{" "}
+                en Instagram para conseguir el generador de prompts de tu rubro cada semana.
               </p>
             </div>
           </div>
